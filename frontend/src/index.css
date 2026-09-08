@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --uro-maroon-900: #5A0E16;
+  --uro-maroon-800: #6E101C;
+  --uro-maroon-700: #7E1320;
+  --uro-maroon-600: #941A29;
+  --uro-maroon-500: #A92A38;
+  --uro-rose-100: #F8EAEC;
+  --uro-cream-50: #FCFAF7;
+  --uro-white: #FFFFFF;
+  --uro-charcoal: #1E1E24;
+  --uro-gray-700: #525866;
+  --uro-gray-500: #8B919E;
+  --uro-gray-300: #D9DDE4;
+  --uro-gray-100: #F2F4F7;
+
+  --status-success: #1F8F5F;
+  --status-warning: #D99A22;
+  --status-danger: #C1434D;
+  --status-info: #3E7CC4;
+  --status-purple: #7D57B8;
+  --status-neutral: #8C96A3;
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: #FCFAF7;
+  color: #1E1E24;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Playfair Display", Georgia, serif;
+}
