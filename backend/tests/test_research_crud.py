@@ -118,3 +118,84 @@ class TestResearchStats:
         assert "total" in data
         assert "by_status" in data
         assert isinstance(data["by_status"], dict)
+
+
+class TestNewSubmissionRegression:
+    """Regression tests for the New Submission button fix."""
+
+    def test_researcher_can_create_draft(self, api, researcher_token):
+        r = create_research(api, researcher_token, "New Submission Regression Test")
+        assert r["status"] == "DRAFT"
+        assert r["tracking_number"].startswith("HAU-RES-")
+
+    def test_anonymous_cannot_create_draft(self, api):
+        resp = api.post("/research", json={
+            "title": "Anonymous Test",
+            "authors": [{"name": "Hacker", "is_lead": True}],
+        })
+        assert resp.status_code == 401
+
+    def test_draft_has_correct_initial_status(self, api, researcher_token):
+        r = create_research(api, researcher_token, "Status Check")
+        assert r["status"] == "DRAFT"
+        # Verify it can be listed as draft
+        resp = api.get(f"/research/{r['id']}", token=researcher_token)
+        assert resp.json()["status"] == "DRAFT"
+
+    def test_draft_can_be_edited(self, api, researcher_token):
+        r = create_research(api, researcher_token, "Editable Draft")
+        resp = api.patch(f"/research/{r['id']}", token=researcher_token, json={
+            "title": "Editable Draft - Updated",
+            "nature_of_research": "Qualitative",
+            "research_agenda": "Test abstract",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"] == "Editable Draft - Updated"
+        assert data["nature_of_research"] == "Qualitative"
+
+    def test_draft_submission_transitions_correctly(self, api, researcher_token):
+        r = create_research(api, researcher_token, "Submit Test")
+        assert r["status"] == "DRAFT"
+        resp = api.post(f"/research/{r['id']}/transition", token=researcher_token, json={
+            "action": "SUBMIT",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["new_status"] == "SUBMITTED"
+        # Verify persisted
+        resp = api.get(f"/research/{r['id']}", token=researcher_token)
+        assert resp.json()["status"] == "SUBMITTED"
+
+    def test_create_with_all_fields(self, api, researcher_token):
+        resp = api.post("/research", token=researcher_token, json={
+            "title": "Full Field Test",
+            "nature_of_research": "Mixed Methods",
+            "research_agenda": "This is a test abstract for the research",
+            "target_journal": "IEEE Transactions on Education",
+            "is_continuation": True,
+            "continuation_ref": "Previous Research 2024",
+            "mobile_number": "+63 917 123 4567",
+            "institutional_email": "researcher@hau.edu.ph",
+            "authors": [
+                {"name": "Lead Researcher", "is_lead": True, "affiliation": "HAU", "email": "lead@hau.edu.ph"},
+                {"name": "Co-Researcher", "is_lead": False, "affiliation": "UEST", "email": "co@uest.edu.ph"},
+            ],
+        })
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["title"] == "Full Field Test"
+        assert data["nature_of_research"] == "Mixed Methods"
+        assert data["is_continuation"] is True
+        assert len(data["authors"]) == 2
+
+    def test_dean_can_create_draft(self, api, dean_token):
+        r = create_research(api, dean_token, "Dean Created Draft")
+        assert r["status"] == "DRAFT"
+
+    def test_uro_director_can_create_draft(self, api, uro_director_token):
+        r = create_research(api, uro_director_token, "URO Created Draft")
+        assert r["status"] == "DRAFT"
+
+    def test_admin_can_create_draft(self, api, admin_token):
+        r = create_research(api, admin_token, "Admin Created Draft")
+        assert r["status"] == "DRAFT"

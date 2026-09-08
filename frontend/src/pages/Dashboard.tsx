@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FilePlus,
   UserCheck,
@@ -111,6 +112,7 @@ const DEADLINES = [
 
 export default function Dashboard() {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [phase3, setPhase3] = useState<Phase3Dashboard | null>(null);
   const [recentItems, setRecentItems] = useState<ResearchItem[]>([]);
@@ -170,6 +172,9 @@ export default function Dashboard() {
         {QUICK_ACTIONS.map((action) => (
           <button
             key={action.label}
+            onClick={() => {
+              if (action.label === "New Submission") navigate("/research/new");
+            }}
             className={`flex flex-col items-center gap-2 p-4 rounded-card border transition-all hover:-translate-y-0.5 hover:shadow-hover ${
               action.primary
                 ? "bg-maroon-700 text-white border-maroon-700"

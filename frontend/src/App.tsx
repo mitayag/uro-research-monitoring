@@ -5,6 +5,7 @@ import AppShell from "./components/layout/AppShell";
 import Dashboard from "./pages/Dashboard";
 import Research from "./pages/Research";
 import ResearchDetail from "./pages/ResearchDetail";
+import NewSubmission from "./pages/NewSubmission";
 import Login from "./pages/Login";
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="research" element={<Research />} />
+            <Route path="research/new" element={<NewSubmission />} />
             <Route path="research/:id" element={<ResearchDetail />} />
             <Route path="submissions" element={<div className="p-6"><h1 className="font-heading text-2xl font-bold">Submissions</h1><p className="text-gray-500 mt-2">Coming in Phase 2</p></div>} />
             <Route path="researchers" element={<div className="p-6"><h1 className="font-heading text-2xl font-bold">Researchers</h1><p className="text-gray-500 mt-2">Coming in Phase 3</p></div>} />

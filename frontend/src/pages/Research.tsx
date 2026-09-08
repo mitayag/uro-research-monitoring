@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Upload, Filter, Download } from "lucide-react";
 import { apiRequest } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -51,7 +52,8 @@ const PIPELINE = [
 ];
 
 export default function Research() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<ResearchItem[]>([]);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,17 +101,24 @@ export default function Research() {
 
       {/* Action Toolbar */}
       <div className="flex items-center gap-3">
-        <button className="flex items-center gap-2 bg-maroon-700 text-white px-4 py-2.5 rounded-control text-sm font-semibold hover:bg-maroon-600 transition-colors">
+        <button
+          onClick={() => navigate("/research/new")}
+          className="flex items-center gap-2 bg-maroon-700 text-white px-4 py-2.5 rounded-control text-sm font-semibold hover:bg-maroon-600 transition-colors"
+        >
           <Plus size={16} /> New Submission
         </button>
-        <button className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-control text-sm font-medium hover:bg-gray-50 transition-colors">
-          <Upload size={16} /> Import
-        </button>
+        {!user?.roles?.includes("RESEARCHER") && (
+          <>
+            <button className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-control text-sm font-medium hover:bg-gray-50 transition-colors">
+              <Upload size={16} /> Import
+            </button>
+            <button className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-control text-sm font-medium hover:bg-gray-50 transition-colors">
+              <Download size={16} /> Export
+            </button>
+          </>
+        )}
         <button className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-control text-sm font-medium hover:bg-gray-50 transition-colors">
           <Filter size={16} /> Filter
-        </button>
-        <button className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-control text-sm font-medium hover:bg-gray-50 transition-colors">
-          <Download size={16} /> Export
         </button>
       </div>
 
