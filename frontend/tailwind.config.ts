@@ -5,7 +5,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        maron: "#5A0E16",
         maroon: {
+          DEFAULT: "#5A0E16",
           900: "#5A0E16",
           800: "#6E101C",
           700: "#7E1320",

@@ -9,6 +9,11 @@ export default function TopBar() {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const isResearcher = user?.roles?.includes("RESEARCHER") && !user?.roles?.includes("ADMIN") && !user?.roles?.includes("URO_DIRECTOR") && !user?.roles?.includes("URO_STAFF");
+  const searchPlaceholder = isResearcher
+    ? "Search my research, submissions, feedback, or documents..."
+    : "Search submissions, researchers, projects, or documents...";
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -38,7 +43,7 @@ export default function TopBar() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
-            placeholder="Search submissions, researchers, projects, or documents..."
+            placeholder={searchPlaceholder}
             className="w-full pl-10 pr-16 py-2.5 rounded-xl border border-gray-200 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-maroon-500/30 focus:border-maroon-500 transition-colors"
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 bg-white border border-gray-200 rounded px-1.5 py-0.5">

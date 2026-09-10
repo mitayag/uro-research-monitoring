@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { apiRequest } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
+import ResearcherDashboard from "./ResearcherDashboard";
+import DeanDashboard from "./DeanDashboard";
 
 interface ResearchItem {
   id: string;
@@ -111,12 +113,28 @@ const DEADLINES = [
 ];
 
 export default function Dashboard() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [phase3, setPhase3] = useState<Phase3Dashboard | null>(null);
   const [recentItems, setRecentItems] = useState<ResearchItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Check if user is a pure researcher (not admin, URO director, or URO staff)
+  const isResearcher = user?.roles?.includes("RESEARCHER") && !user?.roles?.includes("ADMIN") && !user?.roles?.includes("URO_DIRECTOR") && !user?.roles?.includes("URO_STAFF");
+
+  // Check if user is a pure Dean (not admin, URO director, or URO staff)
+  const isDean = user?.roles?.includes("DEAN") && !user?.roles?.includes("ADMIN") && !user?.roles?.includes("URO_DIRECTOR") && !user?.roles?.includes("URO_STAFF");
+
+  // Render researcher-specific dashboard
+  if (isResearcher) {
+    return <ResearcherDashboard />;
+  }
+
+  // Render Dean-specific dashboard
+  if (isDean) {
+    return <DeanDashboard />;
+  }
 
   useEffect(() => {
     if (!token) return;

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, Upload } from "lucide-react";
-import { apiRequest } from "../lib/api";
+import { ArrowLeft, Plus, Trash2, Upload, CheckCircle } from "lucide-react";
+import { fileUploadRequest, ApiError } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
 interface AuthorEntry {
@@ -11,7 +11,7 @@ interface AuthorEntry {
   is_lead: boolean;
 }
 
-interface FormData {
+interface SubmissionFormData {
   title: string;
   nature_of_research: string;
   research_agenda: string;
@@ -27,7 +27,18 @@ interface FormErrors {
   title?: string;
   authors?: string;
   general?: string;
+  proposal?: string;
 }
+
+interface SelectedFile {
+  file: File;
+  name: string;
+  size: number;
+  type: string;
+}
+
+const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".doc"];
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 const RESEARCH_TYPES = [
   "Quantitative",
@@ -42,16 +53,43 @@ const RESEARCH_TYPES = [
   "Other",
 ];
 
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function getFileExtension(filename: string): string {
+  return filename.split(".").pop()?.toUpperCase() || "";
+}
+
+function validateFile(file: File): string | null {
+  const ext = "." + file.name.split(".").pop()?.toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    return `Unsupported file type. Please upload a PDF, DOCX, or DOC file.`;
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return `File exceeds the maximum allowed size of 50 MB.`;
+  }
+  return null;
+}
+
 export default function NewSubmission() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
-  const [form, setForm] = useState<FormData>({
+  const [form, setForm] = useState<SubmissionFormData>({
     title: "",
     nature_of_research: "",
     research_agenda: "",
@@ -70,7 +108,7 @@ export default function NewSubmission() {
     ],
   });
 
-  const updateField = (field: keyof FormData, value: string | boolean) => {
+  const updateField = (field: keyof SubmissionFormData, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors.general) setErrors((prev) => ({ ...prev, general: undefined }));
   };
@@ -102,7 +140,59 @@ export default function NewSubmission() {
     }));
   };
 
-  const validate = (): boolean => {
+  const handleFileSelect = useCallback((file: File) => {
+    const error = validateFile(file);
+    if (error) {
+      setErrors((prev) => ({ ...prev, proposal: error }));
+      return;
+    }
+    setErrors((prev) => ({ ...prev, proposal: undefined }));
+    setSelectedFile({
+      file,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+  }, []);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, [handleFileSelect]);
+
+  const handleRemoveFile = useCallback(() => {
+    setSelectedFile(null);
+    setErrors((prev) => ({ ...prev, proposal: undefined }));
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  }, [handleFileSelect]);
+
+  const validate = (requireProposal: boolean = false): boolean => {
     const newErrors: FormErrors = {};
     if (!form.title.trim()) {
       newErrors.title = "Research title is required";
@@ -114,65 +204,71 @@ export default function NewSubmission() {
     if (hasEmptyName) {
       newErrors.authors = "All authors must have a name";
     }
+    if (requireProposal && !selectedFile) {
+      newErrors.proposal = "Please upload the Research Proposal Document before submitting.";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const buildPayload = () => ({
-    title: form.title.trim(),
-    nature_of_research: form.nature_of_research || null,
-    research_agenda: form.research_agenda.trim() || null,
-    target_journal: form.target_journal.trim() || null,
-    is_continuation: form.is_continuation,
-    continuation_ref: form.is_continuation ? form.continuation_ref.trim() || null : null,
-    mobile_number: form.mobile_number.trim() || null,
-    institutional_email: form.institutional_email.trim() || null,
-    authors: form.authors
-      .filter((a) => a.name.trim())
-      .map((a) => ({
-        name: a.name.trim(),
-        affiliation: a.affiliation.trim() || null,
-        email: a.email.trim() || null,
-        is_lead: a.is_lead,
-      })),
-  });
+  const buildFormData = (submit: boolean): globalThis.FormData => {
+    const fd = new globalThis.FormData();
+    fd.append("title", form.title.trim());
+    if (form.nature_of_research) fd.append("nature_of_research", form.nature_of_research);
+    if (form.research_agenda.trim()) fd.append("research_agenda", form.research_agenda.trim());
+    if (form.target_journal.trim()) fd.append("target_journal", form.target_journal.trim());
+    fd.append("is_continuation", String(form.is_continuation));
+    if (form.is_continuation && form.continuation_ref.trim()) {
+      fd.append("continuation_ref", form.continuation_ref.trim());
+    }
+    if (form.mobile_number.trim()) fd.append("mobile_number", form.mobile_number.trim());
+    if (form.institutional_email.trim()) fd.append("institutional_email", form.institutional_email.trim());
+    fd.append("authors_json", JSON.stringify(
+      form.authors
+        .filter((a) => a.name.trim())
+        .map((a) => ({
+          name: a.name.trim(),
+          affiliation: a.affiliation.trim() || null,
+          email: a.email.trim() || null,
+          is_lead: a.is_lead,
+        }))
+    ));
+    fd.append("submit", String(submit));
+    if (selectedFile) {
+      fd.append("proposal_document", selectedFile.file);
+    }
+    return fd;
+  };
 
   const saveDraft = async () => {
-    if (!validate() || !token) return;
+    if (!validate(false) || !token) return;
     setSaving(true);
+    setErrors({});
     try {
-      const result = await apiRequest<{ id: string }>("/research", {
-        token,
-        method: "POST",
-        body: buildPayload(),
-      });
+      const formData = buildFormData(false);
+      await fileUploadRequest("/research/create-with-document", formData, { token });
       setToast({ type: "success", message: "Draft saved successfully" });
-      setTimeout(() => navigate(`/research/${result.id}`), 800);
+      setTimeout(() => navigate("/research"), 800);
     } catch (err: any) {
-      setErrors({ general: err.detail || "Failed to save draft. Please try again." });
+      const message = err instanceof ApiError ? err.detail : "Failed to save draft. Please try again.";
+      setErrors({ general: message });
     } finally {
       setSaving(false);
     }
   };
 
   const submitApplication = async () => {
-    if (!validate() || !token) return;
+    if (!validate(true) || !token) return;
     setSubmitting(true);
+    setErrors({});
     try {
-      const result = await apiRequest<{ id: string }>("/research", {
-        token,
-        method: "POST",
-        body: buildPayload(),
-      });
-      await apiRequest(`/research/${result.id}/transition`, {
-        token,
-        method: "POST",
-        body: { action: "SUBMIT" },
-      });
-      setToast({ type: "success", message: "Application submitted successfully" });
-      setTimeout(() => navigate(`/research/${result.id}`), 800);
+      const formData = buildFormData(true);
+      await fileUploadRequest("/research/create-with-document", formData, { token });
+      setToast({ type: "success", message: "Research submitted successfully" });
+      setTimeout(() => navigate("/research"), 800);
     } catch (err: any) {
-      setErrors({ general: err.detail || "Failed to submit application. Please try again." });
+      const message = err instanceof ApiError ? err.detail : "Failed to submit application. Please try again.";
+      setErrors({ general: message });
     } finally {
       setSubmitting(false);
       setShowSubmitConfirm(false);
@@ -395,15 +491,75 @@ export default function NewSubmission() {
         </div>
       </div>
 
-      {/* Document Upload Placeholder */}
+      {/* Document Upload */}
       <div className="bg-white rounded-card border border-gray-200 p-6 shadow-card space-y-4">
         <h2 className="font-heading text-base font-bold text-gray-800 border-b border-gray-100 pb-3">Research Proposal Document</h2>
-        <div className="border-2 border-dashed border-gray-200 rounded-card p-8 text-center hover:border-maroon-300 transition-colors cursor-pointer">
-          <Upload size={32} className="mx-auto text-gray-400 mb-3" />
-          <p className="text-sm font-medium text-gray-600">Click to upload or drag and drop</p>
-          <p className="text-xs text-gray-400 mt-1">PDF, DOCX, or DOC (max 50MB)</p>
-          <p className="text-xs text-gray-400 mt-2">Document upload will be available after saving the draft</p>
-        </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.doc"
+          onChange={handleFileInputChange}
+          className="hidden"
+        />
+
+        {/* Proposal error */}
+        {errors.proposal && (
+          <div className="bg-red-50 border border-red-200 rounded-card p-3 text-sm text-red-700">
+            {errors.proposal}
+          </div>
+        )}
+
+        {/* Upload zone or selected file */}
+        {selectedFile ? (
+          <div className="border border-green-200 bg-green-50 rounded-card p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+                <CheckCircle size={20} className="text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{selectedFile.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-gray-500">{getFileExtension(selectedFile.name)}</span>
+                  <span className="text-xs text-gray-400">•</span>
+                  <span className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1.5 text-xs font-medium text-maroon-700 border border-maroon-200 rounded-control hover:bg-maroon-50 transition-colors"
+                >
+                  Replace File
+                </button>
+                <button
+                  onClick={handleRemoveFile}
+                  className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-control hover:bg-red-50 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-card p-8 text-center cursor-pointer transition-all ${
+              dragActive
+                ? "border-maroon-500 bg-maroon-50"
+                : "border-gray-200 hover:border-maroon-300 hover:bg-gray-50"
+            }`}
+          >
+            <Upload size={32} className={`mx-auto mb-3 ${dragActive ? "text-maroon-600" : "text-gray-400"}`} />
+            <p className="text-sm font-medium text-gray-600">Click to upload or drag and drop</p>
+            <p className="text-xs text-gray-400 mt-1">PDF, DOCX, or DOC (max 50MB)</p>
+            <p className="text-xs text-gray-400 mt-2">Upload your research proposal in PDF, DOCX, or DOC format. Maximum file size: 50 MB.</p>
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}
@@ -419,11 +575,11 @@ export default function NewSubmission() {
           disabled={saving || submitting}
           className="px-5 py-2.5 rounded-control text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
-          {saving ? "Saving..." : "Save as Draft"}
+          {saving ? "Saving draft..." : "Save as Draft"}
         </button>
         <button
           onClick={() => {
-            if (validate()) setShowSubmitConfirm(true);
+            if (validate(true)) setShowSubmitConfirm(true);
           }}
           disabled={saving || submitting}
           className="px-5 py-2.5 rounded-control text-sm font-semibold bg-maroon-700 text-white hover:bg-maroon-600 transition-colors disabled:opacity-50"
@@ -440,6 +596,12 @@ export default function NewSubmission() {
             <p className="text-sm text-gray-600 mb-6">
               Once submitted, this application will be forwarded into the approval workflow. You will not be able to edit it after submission.
             </p>
+            {selectedFile && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-card text-sm">
+                <p className="font-medium text-gray-700">Attached: {selectedFile.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{getFileExtension(selectedFile.name)} • {formatFileSize(selectedFile.size)}</p>
+              </div>
+            )}
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowSubmitConfirm(false)}

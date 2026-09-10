@@ -17,6 +17,9 @@ interface ResearchDetail {
   nature_of_research: string | null;
   created_at: string | null;
   submitted_at: string | null;
+  school_name: string | null;
+  department_name: string | null;
+  assigned_dean_name: string | null;
   authors: { id: string; name: string; is_lead: boolean; affiliation: string | null }[];
 }
 
@@ -391,6 +394,31 @@ export default function ResearchDetail() {
               <span className="text-gray-500">Date Submitted</span>
               <span className="font-medium">{research.submitted_at ? new Date(research.submitted_at).toLocaleDateString() : "—"}</span>
             </div>
+          </div>
+        </div>
+
+        {/* Academic Affiliation */}
+        <div className="bg-white rounded-card border border-gray-200 p-5 shadow-card">
+          <h3 className="font-heading text-sm font-bold mb-4">Academic Affiliation</h3>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Department</span>
+              <span className="font-medium">{research.department_name || "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">School / College</span>
+              <span className="font-medium">{research.school_name || "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Endorsing Dean</span>
+              <span className="font-medium">{research.assigned_dean_name || "—"}</span>
+            </div>
+            {research.status === "FOR_DEAN_ENDORSEMENT" && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Endorsement Status</span>
+                <span className="font-medium text-amber-600">Awaiting Dean Endorsement</span>
+              </div>
+            )}
           </div>
         </div>
 

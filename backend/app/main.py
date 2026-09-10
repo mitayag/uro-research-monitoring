@@ -6,6 +6,8 @@ from app.api.health import router as health_router
 from app.api.auth import router as auth_router
 from app.api.research import router as research_router
 from app.api.phase3 import router as phase3_router
+from app.api.dean import router as dean_router
+from app.api.admin import router as admin_router
 
 settings = get_settings()
 
@@ -35,3 +37,5 @@ app.include_router(health_router)
 app.include_router(auth_router, prefix=settings.API_PREFIX)
 app.include_router(research_router, prefix=settings.API_PREFIX)
 app.include_router(phase3_router, prefix=settings.API_PREFIX)
+app.include_router(dean_router, prefix=settings.API_PREFIX)
+app.include_router(admin_router, prefix=settings.API_PREFIX)

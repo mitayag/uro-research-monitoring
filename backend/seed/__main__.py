@@ -85,6 +85,54 @@ USERS = [
         "school": "SED",
     },
     {
+        "email": "dean.sba@hau.edu.ph",
+        "password": "dean123",
+        "first_name": "Patricia",
+        "last_name": "Cruz",
+        "roles": ["DEAN"],
+        "school": "SBA",
+    },
+    {
+        "email": "dean.sea@hau.edu.ph",
+        "password": "dean123",
+        "first_name": "Miguel",
+        "last_name": "Santos",
+        "roles": ["DEAN"],
+        "school": "SEA",
+    },
+    {
+        "email": "dean.shtm@hau.edu.ph",
+        "password": "dean123",
+        "first_name": "Rosa",
+        "last_name": "Mendoza",
+        "roles": ["DEAN"],
+        "school": "SHTM",
+    },
+    {
+        "email": "dean.sas@hau.edu.ph",
+        "password": "dean123",
+        "first_name": "Fernando",
+        "last_name": "Reyes",
+        "roles": ["DEAN"],
+        "school": "SAS",
+    },
+    {
+        "email": "dean.con@hau.edu.ph",
+        "password": "dean123",
+        "first_name": "Gloria",
+        "last_name": "Santiago",
+        "roles": ["DEAN"],
+        "school": "CON",
+    },
+    {
+        "email": "dean.coe@hau.edu.ph",
+        "password": "dean123",
+        "first_name": "Ricardo",
+        "last_name": "Lim",
+        "roles": ["DEAN"],
+        "school": "COE",
+    },
+    {
         "email": "researcher1@hau.edu.ph",
         "password": "researcher123",
         "first_name": "Anna",
@@ -190,6 +238,17 @@ USERS = [
     },
 ]
 
+DEAN_SCHOOL_ASSIGNMENTS = {
+    "dean.soc@hau.edu.ph": "SOC",
+    "dean.sed@hau.edu.ph": "SED",
+    "dean.sba@hau.edu.ph": "SBA",
+    "dean.sea@hau.edu.ph": "SEA",
+    "dean.shtm@hau.edu.ph": "SHTM",
+    "dean.sas@hau.edu.ph": "SAS",
+    "dean.con@hau.edu.ph": "CON",
+    "dean.coe@hau.edu.ph": "COE",
+}
+
 
 def seed():
     db = SessionLocal()
@@ -216,6 +275,7 @@ def seed():
         db.flush()
 
         print("Seeding users...")
+        dean_user_map = {}
         for user_data in USERS:
             user = User(
                 id=uuid.uuid4(),
@@ -250,6 +310,16 @@ def seed():
                     is_primary=True,
                 )
                 db.add(aff)
+
+            if user_data["email"] in DEAN_SCHOOL_ASSIGNMENTS:
+                dean_user_map[user_data["email"]] = user
+
+        # Assign deans to schools
+        print("Assigning deans to schools...")
+        for dean_email, school_code in DEAN_SCHOOL_ASSIGNMENTS.items():
+            if dean_email in dean_user_map and school_code in school_map:
+                school = school_map[school_code]
+                school.dean_user_id = dean_user_map[dean_email].id
 
         db.commit()
         print("Seed data created successfully!")

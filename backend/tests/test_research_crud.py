@@ -161,10 +161,10 @@ class TestNewSubmissionRegression:
             "action": "SUBMIT",
         })
         assert resp.status_code == 200
-        assert resp.json()["new_status"] == "SUBMITTED"
+        assert resp.json()["new_status"] == "FOR_DEAN_ENDORSEMENT"
         # Verify persisted
         resp = api.get(f"/research/{r['id']}", token=researcher_token)
-        assert resp.json()["status"] == "SUBMITTED"
+        assert resp.json()["status"] == "FOR_DEAN_ENDORSEMENT"
 
     def test_create_with_all_fields(self, api, researcher_token):
         resp = api.post("/research", token=researcher_token, json={

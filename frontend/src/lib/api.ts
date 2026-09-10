@@ -6,6 +6,10 @@ interface ApiOptions {
   token?: string;
 }
 
+interface FileUploadOptions {
+  token?: string;
+}
+
 export class ApiError extends Error {
   status: number;
   detail: string;
@@ -41,7 +45,73 @@ export async function apiRequest<T = unknown>(
     let detail = `HTTP ${res.status}`;
     try {
       const errBody = await res.json();
-      detail = errBody.detail || detail;
+      const raw = errBody.detail ?? errBody.message ?? detail;
+      if (Array.isArray(raw)) {
+        detail = raw
+          .map((item: any) => {
+            if (typeof item === "string") return item;
+            if (item?.msg) {
+              const loc = Array.isArray(item.loc) ? item.loc.filter((l: any) => l !== "body").join(".") : "";
+              return loc ? `${loc}: ${item.msg}` : item.msg;
+            }
+            if (item?.message) return item.message;
+            return JSON.stringify(item);
+          })
+          .join("; ");
+      } else if (typeof raw === "string") {
+        detail = raw;
+      } else {
+        detail = String(raw);
+      }
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, detail);
+  }
+
+  return res.json();
+}
+
+export async function fileUploadRequest<T = unknown>(
+  path: string,
+  formData: FormData,
+  options: FileUploadOptions = {}
+): Promise<T> {
+  const { token } = options;
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const errBody = await res.json();
+      const raw = errBody.detail ?? errBody.message ?? detail;
+      if (Array.isArray(raw)) {
+        detail = raw
+          .map((item: any) => {
+            if (typeof item === "string") return item;
+            if (item?.msg) {
+              const loc = Array.isArray(item.loc) ? item.loc.filter((l: any) => l !== "body").join(".") : "";
+              return loc ? `${loc}: ${item.msg}` : item.msg;
+            }
+            if (item?.message) return item.message;
+            return JSON.stringify(item);
+          })
+          .join("; ");
+      } else if (typeof raw === "string") {
+        detail = raw;
+      } else {
+        detail = String(raw);
+      }
     } catch {
       // ignore
     }

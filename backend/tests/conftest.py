@@ -132,7 +132,6 @@ def advance_to_endorsed(api: APIClient, researcher_token: str, dean_token: str) 
     r = create_research(api, researcher_token)
     rid = r["id"]
     transition(api, researcher_token, rid, "SUBMIT")
-    transition(api, researcher_token, rid, "FORWARD_TO_DEAN")
     transition(api, dean_token, rid, "DEAN_ENDORSE")
     return rid
 

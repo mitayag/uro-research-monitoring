@@ -21,9 +21,11 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    employee_id = Column(String(50), unique=True, nullable=True, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     first_name = Column(String(100), nullable=False)
+    middle_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -35,6 +37,8 @@ class User(Base):
 
     @property
     def full_name(self) -> str:
+        if self.middle_name:
+            return f"{self.first_name} {self.middle_name} {self.last_name}"
         return f"{self.first_name} {self.last_name}"
 
 
@@ -56,10 +60,14 @@ class SchoolCollege(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(200), nullable=False)
     code = Column(String(20), unique=True, nullable=False)
+    description = Column(Text, nullable=True)
+    dean_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     departments = relationship("DepartmentUnit", back_populates="school_college", cascade="all, delete-orphan")
+    dean = relationship("User", foreign_keys=[dean_user_id])
 
 
 class DepartmentUnit(Base):
@@ -68,9 +76,11 @@ class DepartmentUnit(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(200), nullable=False)
     code = Column(String(20), unique=True, nullable=False)
+    description = Column(Text, nullable=True)
     school_college_id = Column(UUID(as_uuid=True), ForeignKey("school_colleges.id"), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     school_college = relationship("SchoolCollege", back_populates="departments")
     affiliations = relationship("UserAffiliation", back_populates="department_unit")

@@ -5,22 +5,22 @@ from tests.conftest import create_research, transition, advance_to_endorsed
 
 class TestSubmissionWorkflow:
     def test_draft_to_submitted(self, api, researcher_token):
+        """SUBMIT now auto-routes to FOR_DEAN_ENDORSEMENT."""
         r = create_research(api, researcher_token)
         resp = transition(api, researcher_token, r["id"], "SUBMIT")
         assert resp.status_code == 200
-        assert resp.json()["new_status"] == "SUBMITTED"
+        assert resp.json()["new_status"] == "FOR_DEAN_ENDORSEMENT"
 
     def test_submitted_to_forward_to_dean(self, api, researcher_token):
+        """SUBMIT goes directly to FOR_DEAN_ENDORSEMENT (no separate FORWARD_TO_DEAN)."""
         r = create_research(api, researcher_token)
-        transition(api, researcher_token, r["id"], "SUBMIT")
-        resp = transition(api, researcher_token, r["id"], "FORWARD_TO_DEAN")
+        resp = transition(api, researcher_token, r["id"], "SUBMIT")
         assert resp.status_code == 200
         assert resp.json()["new_status"] == "FOR_DEAN_ENDORSEMENT"
 
     def test_dean_endorse(self, api, researcher_token, dean_token):
         r = create_research(api, researcher_token)
         transition(api, researcher_token, r["id"], "SUBMIT")
-        transition(api, researcher_token, r["id"], "FORWARD_TO_DEAN")
         resp = transition(api, dean_token, r["id"], "DEAN_ENDORSE")
         assert resp.status_code == 200
         assert resp.json()["new_status"] == "ENDORSED_TO_URO"
@@ -28,7 +28,6 @@ class TestSubmissionWorkflow:
     def test_dean_reject(self, api, researcher_token, dean_token):
         r = create_research(api, researcher_token)
         transition(api, researcher_token, r["id"], "SUBMIT")
-        transition(api, researcher_token, r["id"], "FORWARD_TO_DEAN")
         resp = transition(api, dean_token, r["id"], "DEAN_REJECT")
         assert resp.status_code == 200
         assert resp.json()["new_status"] == "DRAFT"
@@ -73,7 +72,6 @@ class TestStatusHistory:
         history = resp.json()
         actions = [h["action"] for h in history]
         assert "SUBMIT" in actions
-        assert "FORWARD_TO_DEAN" in actions
         assert "DEAN_ENDORSE" in actions
 
 

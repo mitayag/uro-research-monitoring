@@ -113,6 +113,11 @@ class ResearchResponse(BaseModel):
     updated_at: Optional[datetime] = None
     submitted_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    school_college_id: Optional[str] = None
+    school_name: Optional[str] = None
+    department_name: Optional[str] = None
+    assigned_dean_id: Optional[str] = None
+    assigned_dean_name: Optional[str] = None
     authors: list[AuthorResponse] = []
 
 

@@ -14,15 +14,15 @@ class TestResearcherRBAC:
         assert resp.status_code == 200
 
     def test_researcher_can_forward_to_dean(self, api, researcher_token):
+        """SUBMIT now auto-routes to FOR_DEAN_ENDORSEMENT."""
         r = create_research(api, researcher_token)
-        transition(api, researcher_token, r["id"], "SUBMIT")
-        resp = transition(api, researcher_token, r["id"], "FORWARD_TO_DEAN")
+        resp = transition(api, researcher_token, r["id"], "SUBMIT")
         assert resp.status_code == 200
+        assert resp.json()["new_status"] == "FOR_DEAN_ENDORSEMENT"
 
     def test_researcher_cannot_endorse(self, api, researcher_token):
         r = create_research(api, researcher_token)
         transition(api, researcher_token, r["id"], "SUBMIT")
-        transition(api, researcher_token, r["id"], "FORWARD_TO_DEAN")
         resp = transition(api, researcher_token, r["id"], "DEAN_ENDORSE")
         assert resp.status_code == 403
 
@@ -161,12 +161,10 @@ class TestAdminRBAC:
         """Admin should be able to perform any action."""
         r = create_research(api, admin_token, "Admin Test")
         rid = r["id"]
-        # Submit
+        # Submit (auto-routes to FOR_DEAN_ENDORSEMENT)
         resp = transition(api, admin_token, rid, "SUBMIT")
         assert resp.status_code == 200
-        # Forward to dean
-        resp = transition(api, admin_token, rid, "FORWARD_TO_DEAN")
-        assert resp.status_code == 200
+        assert resp.json()["new_status"] == "FOR_DEAN_ENDORSEMENT"
         # Endorse
         resp = transition(api, admin_token, rid, "DEAN_ENDORSE")
         assert resp.status_code == 200
